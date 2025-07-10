@@ -1,21 +1,22 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { 
-  DEFAULT_ROUTINE_ITEMS, 
-  DailyProgress, 
-  getCurrentDate, 
+import {
+  DailyProgress,
+  getCurrentDate,
   getCurrentTimestamp,
-  calculateCompletionRate 
+  calculateCompletionRate,
+  getTodayRoutineItems,
+  RoutineItem
 } from '@/types';
-import { 
-  getTodayProgress, 
-  saveDailyProgress, 
+import {
+  getTodayProgress,
+  saveDailyProgress,
   checkAndPerformDailyReset,
-  getUserByName,
-  setCurrentUser 
+  setCurrentUser
 } from '@/utils/storage';
 import { WeeklyReport } from './WeeklyReport';
+import { TaskInfoPopup } from './TaskInfoPopup';
 
 interface RoutineTrackerProps {
   userId: string;
@@ -26,13 +27,32 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
   const [progress, setProgress] = useState<DailyProgress | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<{ id: string; name: string } | null>(null);
   const [showMenu, setShowMenu] = useState(false);
   const [showWeeklyReport, setShowWeeklyReport] = useState(false);
+  const [todayRoutineItems, setTodayRoutineItems] = useState(getTodayRoutineItems());
+  const [selectedTask, setSelectedTask] = useState<RoutineItem | null>(null);
 
   useEffect(() => {
     initializeTracker();
   }, [userId]);
+
+  // Update routine items when day changes
+  useEffect(() => {
+    const updateRoutineItems = () => {
+      setTodayRoutineItems(getTodayRoutineItems());
+    };
+
+    // Update immediately
+    updateRoutineItems();
+
+    // Set up interval to check for day change every minute
+    const interval = setInterval(() => {
+      updateRoutineItems();
+    }, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, []);
 
   const initializeTracker = async () => {
     setIsLoading(true);
@@ -43,7 +63,7 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
       
       // Get user info
       const users = JSON.parse(localStorage.getItem('routine_tracker_users') || '[]');
-      const currentUser = users.find((u: any) => u.id === userId);
+      const currentUser = users.find((u: { id: string; name: string }) => u.id === userId);
       setUser(currentUser);
       
       // Get today's progress
@@ -112,6 +132,14 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
     setShowWeeklyReport(false);
   };
 
+  const openTaskInfo = (task: RoutineItem) => {
+    setSelectedTask(task);
+  };
+
+  const closeTaskInfo = () => {
+    setSelectedTask(null);
+  };
+
   // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -156,7 +184,7 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
     );
   }
 
-  const completionRate = calculateCompletionRate(progress.completedItems, DEFAULT_ROUTINE_ITEMS.length);
+  const completionRate = calculateCompletionRate(progress.completedItems, todayRoutineItems.length);
   const currentDate = new Date().toLocaleDateString('en-US', { 
     weekday: 'long', 
     year: 'numeric', 
@@ -226,7 +254,7 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
               <div>
                 <p className="text-sm text-gray-600">Today's Progress</p>
                 <p className="text-2xl font-bold text-indigo-600">
-                  {progress.completedItems.length}/{DEFAULT_ROUTINE_ITEMS.length}
+                  {progress.completedItems.length}/{todayRoutineItems.length}
                 </p>
               </div>
               <div className="text-right">
@@ -254,7 +282,7 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
           </h2>
           
           <div className="space-y-3">
-            {DEFAULT_ROUTINE_ITEMS.map((item) => {
+            {todayRoutineItems.map((item) => {
               const isCompleted = progress.completedItems.includes(item.id);
               
               return (
@@ -278,17 +306,34 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
                       </p>
                     </div>
                   </div>
-                  
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                    isCompleted
-                      ? 'border-green-500 bg-green-500'
-                      : 'border-gray-300'
-                  }`}>
-                    {isCompleted && (
-                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
+
+                  <div className="flex items-center space-x-2">
+                    {/* Info Button */}
+                    {item.detailedInfo && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openTaskInfo(item);
+                        }}
+                        className="w-6 h-6 rounded-full bg-indigo-100 hover:bg-indigo-200 flex items-center justify-center transition-colors"
+                        title="More info"
+                      >
+                        <span className="text-indigo-600 text-sm font-bold">ⓘ</span>
+                      </button>
                     )}
+
+                    {/* Checkbox */}
+                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                      isCompleted
+                        ? 'border-green-500 bg-green-500'
+                        : 'border-gray-300'
+                    }`}>
+                      {isCompleted && (
+                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -310,12 +355,12 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
         <div className="text-center mt-6 text-gray-600">
           <p className="text-sm">
             {completionRate === 100 
-              ? "🎉 Amazing! You've completed all your routines today!" 
+              ? "🎉 Amazing! You&apos;ve completed all your routines today!"
               : completionRate >= 75 
-              ? "🔥 You're doing great! Keep it up!" 
+              ? "🔥 You&apos;re doing great! Keep it up!"
               : completionRate >= 50 
-              ? "💪 Good progress! You're halfway there!" 
-              : "🌱 Every step counts. You've got this!"
+              ? "💪 Good progress! You&apos;re halfway there!"
+              : "🌱 Every step counts. You&apos;ve got this!"
             }
           </p>
           <p className="text-xs mt-2">
@@ -329,6 +374,11 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
         {/* Weekly Report Modal */}
         {showWeeklyReport && (
           <WeeklyReport userId={userId} onClose={closeWeeklyReport} />
+        )}
+
+        {/* Task Info Popup */}
+        {selectedTask && (
+          <TaskInfoPopup item={selectedTask} onClose={closeTaskInfo} />
         )}
       </div>
     </div>
