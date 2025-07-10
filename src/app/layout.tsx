@@ -15,11 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Digital Routine & Results Tracker",
   description: "Track your daily growth with intention - Prayer, Study, Hygiene, Work and more. Built by Tech Talk.",
-  icons: {
-    icon: "/icon.png",
-    shortcut: "/icon.png",
-    apple: "/icon.png",
-  },
+  icons: "/icon.png",
 };
 
 export default function RootLayout({
@@ -29,6 +25,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="icon" href="/icon.png" type="image/png" />
+        <link rel="shortcut icon" href="/icon.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/icon.png" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
