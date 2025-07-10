@@ -111,9 +111,16 @@ export function WeeklyReport({ userId, onClose }: WeeklyReportProps) {
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">📊 Weekly Report</h2>
-            <p className="text-gray-600">{getWeekTitle()}</p>
+          <div className="flex items-center space-x-4">
+            <img
+              src="/icon.png"
+              alt="Routine Tracker"
+              className="w-10 h-10 rounded-lg shadow-md"
+            />
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">📊 Weekly Report</h2>
+              <p className="text-gray-600">{getWeekTitle()}</p>
+            </div>
           </div>
           <div className="flex items-center space-x-4">
             {/* Week Navigation */}
@@ -229,10 +236,13 @@ export function WeeklyReport({ userId, onClose }: WeeklyReportProps) {
         <div className="border-t border-gray-200 p-6 bg-gray-50">
           <button
             onClick={onClose}
-            className="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
+            className="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-indigo-700 transition-colors mb-3"
           >
             Close Report
           </button>
+          <p className="text-center text-xs text-gray-500">
+            Built with ❤️ by <span className="font-semibold text-indigo-600">Tech Talk</span>
+          </p>
         </div>
       </div>
     </div>

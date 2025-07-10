@@ -12,24 +12,34 @@ interface WelcomeScreenProps {
 export function WelcomeScreen({ onUserLogin }: WelcomeScreenProps) {
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [authError, setAuthError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
+    // Check if user is authorized
+    if (!isUserAuthorized(name.trim())) {
+      return; // Don't proceed if not authorized
+    }
+
     setIsLoading(true);
 
     try {
+      // Show success message first
+      setShowSuccess(true);
+
+      // Wait a moment to show the success message
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
       // Check if user already exists
       let user = getUserByName(name.trim());
-      
+
       if (!user) {
-        // Create new user
+        // Create new user with display name
         user = {
           id: generateUserId(name.trim()),
-          name: name.trim(),
+          name: getUserDisplayName(name.trim()),
           createdAt: getCurrentTimestamp(),
           lastActive: getCurrentTimestamp()
         };
@@ -45,6 +55,7 @@ export function WelcomeScreen({ onUserLogin }: WelcomeScreenProps) {
       onUserLogin(user.id);
     } catch (error) {
       console.error('Error logging in:', error);
+      setShowSuccess(false);
     } finally {
       setIsLoading(false);
     }
@@ -55,7 +66,13 @@ export function WelcomeScreen({ onUserLogin }: WelcomeScreenProps) {
       <div className="max-w-md w-full">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="text-6xl mb-4">🧱</div>
+          <div className="mb-4">
+            <img
+              src="/icon.png"
+              alt="Routine Tracker"
+              className="w-16 h-16 mx-auto rounded-lg shadow-lg"
+            />
+          </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Digital Routine & Results Tracker
           </h1>
@@ -109,33 +126,18 @@ export function WelcomeScreen({ onUserLogin }: WelcomeScreenProps) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Enter your name..."
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors"
-                disabled={isLoading}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors ${
+                  name.trim() && !isUserAuthorized(name.trim())
+                    ? 'border-red-300 bg-red-50'
+                    : 'border-gray-300'
+                }`}
+                disabled={isLoading || showSuccess}
                 required
               />
-              {name.trim() && !authError && isUserAuthorized(name.trim()) && (
-                <p className="mt-2 text-sm text-indigo-600 animate-fade-in">
-                  Hi {getUserDisplayName(name)}! Nice to meet you! 👋
-                </p>
-              )}
               {name.trim() && !isUserAuthorized(name.trim()) && (
-                <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg animate-fade-in">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-red-500">🚫</span>
-                    <p className="text-sm text-red-700 font-medium">Access denied</p>
-                  </div>
-                  <p className="text-xs text-red-600 mt-1">
-                    Your name is not on the authorized list. Contact the administrator for access.
-                  </p>
-                </div>
-              )}
-              {authError && (
-                <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg animate-fade-in">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-red-500">⚠️</span>
-                    <p className="text-sm text-red-700 font-medium">{authError}</p>
-                  </div>
-                </div>
+                <p className="mt-2 text-sm text-red-600">
+                  ❌ Sorry, you're not authorized to access this tracker. Contact the admin to get access.
+                </p>
               )}
             </div>
             <button
@@ -150,14 +152,11 @@ export function WelcomeScreen({ onUserLogin }: WelcomeScreenProps) {
                 </div>
               ) : isLoading ? (
                 <div className="flex items-center justify-center space-x-2">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  <span>Setting up your tracker...</span>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Getting started...</span>
                 </div>
               ) : (
-                <div className="flex items-center justify-center space-x-2">
-                  <span>Start My Journey</span>
-                  <span className="text-xl">🚀</span>
-                </div>
+                'Start Tracking 🔥'
               )}
             </button>
           </form>
@@ -166,6 +165,9 @@ export function WelcomeScreen({ onUserLogin }: WelcomeScreenProps) {
         {/* Footer */}
         <div className="text-center mt-6 text-gray-500 text-sm">
           <p>No login stress. No judgment. Just you, your goals, and your growth.</p>
+          <p className="mt-2 text-xs">
+            Built with ❤️ by <span className="font-semibold text-indigo-600">Tech Talk</span>
+          </p>
         </div>
       </div>
     </div>

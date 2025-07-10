@@ -1,19 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import {
-  DEFAULT_ROUTINE_ITEMS,
-  DailyProgress,
-  getCurrentDate,
+import { 
+  DEFAULT_ROUTINE_ITEMS, 
+  DailyProgress, 
+  getCurrentDate, 
   getCurrentTimestamp,
-  calculateCompletionRate
+  calculateCompletionRate 
 } from '@/types';
-import {
-  getTodayProgress,
-  saveDailyProgress,
+import { 
+  getTodayProgress, 
+  saveDailyProgress, 
   checkAndPerformDailyReset,
   getUserByName,
-  setCurrentUser
+  setCurrentUser 
 } from '@/utils/storage';
 import { WeeklyReport } from './WeeklyReport';
 
@@ -33,23 +33,6 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
   useEffect(() => {
     initializeTracker();
   }, [userId]);
-
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (showMenu) {
-        const target = event.target as Element;
-        if (!target.closest('.relative')) {
-          setShowMenu(false);
-        }
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showMenu]);
 
   const initializeTracker = async () => {
     setIsLoading(true);
@@ -129,6 +112,23 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
     setShowWeeklyReport(false);
   };
 
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showMenu) {
+        const target = event.target as Element;
+        if (!target.closest('.relative')) {
+          setShowMenu(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showMenu]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -170,11 +170,18 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
         {/* Header */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
           <div className="flex justify-between items-start mb-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Welcome back, {user?.name || 'Friend'}! 👋
-              </h1>
-              <p className="text-gray-600">{currentDate}</p>
+            <div className="flex items-center space-x-4">
+              <img
+                src="/icon.png"
+                alt="Routine Tracker"
+                className="w-12 h-12 rounded-lg shadow-md"
+              />
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  Welcome back, {user?.name || 'Friend'}! 👋
+                </h1>
+                <p className="text-gray-600">{currentDate}</p>
+              </div>
             </div>
             <div className="flex items-center space-x-4">
               {/* Menu Button */}
@@ -313,6 +320,9 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
           </p>
           <p className="text-xs mt-2">
             Progress auto-saves • Resets at midnight • Access Weekly Report from menu
+          </p>
+          <p className="text-xs mt-2">
+            Built with ❤️ by <span className="font-semibold text-indigo-600">Tech Talk</span>
           </p>
         </div>
 

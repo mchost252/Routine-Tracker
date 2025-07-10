@@ -13,8 +13,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Digital Routine & Results Tracker | Tech Talk",
-  description: "Track your daily growth with intention. Built by Tech Talk - empowering your digital growth journey.",
+  title: "Digital Routine & Results Tracker",
+  description: "Track your daily growth with intention - Prayer, Study, Hygiene, Work and more. Built by Tech Talk.",
+  icons: {
+    icon: "/icon.png",
+    shortcut: "/icon.png",
+    apple: "/icon.png",
+  },
 };
 
 export default function RootLayout({

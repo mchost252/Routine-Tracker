@@ -24,17 +24,17 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="relative">
-            <div className="loading-spinner h-16 w-16 mx-auto mb-6"></div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-2xl animate-pulse">🧱</span>
-            </div>
+          <div className="mb-4">
+            <img
+              src="/icon.png"
+              alt="Routine Tracker"
+              className="w-16 h-16 mx-auto rounded-lg shadow-lg animate-pulse"
+            />
           </div>
-          <h2 className="text-xl font-semibold text-gray-800 mb-2 animate-fade-in">
-            Setting up your tracker...
-          </h2>
-          <p className="text-gray-600 animate-fade-in-delay">
-            Get ready to track your daily growth! ✨
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Loading your routine tracker...</p>
+          <p className="text-gray-500 text-sm mt-2">
+            Built with ❤️ by <span className="font-semibold text-indigo-600">Tech Talk</span>
           </p>
         </div>
       </div>
@@ -42,14 +42,12 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 transition-all duration-500">
-      <div className="animate-fade-in">
-        {currentUserId ? (
-          <RoutineTracker userId={currentUserId} onLogout={() => setCurrentUserId(null)} />
-        ) : (
-          <WelcomeScreen onUserLogin={handleUserLogin} />
-        )}
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      {currentUserId ? (
+        <RoutineTracker userId={currentUserId} onLogout={() => setCurrentUserId(null)} />
+      ) : (
+        <WelcomeScreen onUserLogin={handleUserLogin} />
+      )}
     </div>
   );
 }
