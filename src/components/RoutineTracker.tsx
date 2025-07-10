@@ -252,7 +252,7 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
           <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Today's Progress</p>
+                <p className="text-sm text-gray-600">Today&apos;s Progress</p>
                 <p className="text-2xl font-bold text-indigo-600">
                   {progress.completedItems.length}/{todayRoutineItems.length}
                 </p>

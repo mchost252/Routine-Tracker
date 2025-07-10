@@ -1,7 +1,7 @@
 // Real-time data tracking utilities for the Digital Routine & Results Tracker
 // Provides real-time synchronization across browser tabs and sessions
 
-import { DailyProgress, getCurrentDate } from '@/types';
+import { DailyProgress, User, getCurrentDate } from '@/types';
 
 // Event types for real-time updates
 export type RealtimeEventType = 
@@ -13,7 +13,7 @@ export type RealtimeEventType =
 export interface RealtimeEvent {
   type: RealtimeEventType;
   userId: string;
-  data: Record<string, unknown>;
+  data: Record<string, unknown> | DailyProgress | User | null;
   timestamp: string;
 }
 
