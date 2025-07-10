@@ -1,5 +1,5 @@
 // Local storage utilities for the Digital Routine & Results Tracker
-import { User, DailyProgress, HistoricalData, getCurrentDate, getCurrentTimestamp } from '@/types';
+import { User, DailyProgress, HistoricalData, getCurrentDate } from '@/types';
 
 const STORAGE_KEYS = {
   USERS: 'routine_tracker_users',
@@ -116,8 +116,7 @@ export const getUserHistoricalData = (userId: string, days: number = 30): Histor
 // Daily reset logic
 export const checkAndPerformDailyReset = (userId: string): boolean => {
   const todayProgress = getTodayProgress(userId);
-  const currentDate = getCurrentDate();
-  
+
   // If no progress for today, check if we need to archive yesterday's data
   if (!todayProgress) {
     const yesterday = new Date();

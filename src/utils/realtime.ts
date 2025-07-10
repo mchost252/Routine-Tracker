@@ -13,7 +13,7 @@ export type RealtimeEventType =
 export interface RealtimeEvent {
   type: RealtimeEventType;
   userId: string;
-  data: any;
+  data: Record<string, unknown>;
   timestamp: string;
 }
 
