@@ -16,6 +16,7 @@ import {
   checkAndPerformDailyReset,
   setCurrentUser
 } from '@/utils/storage';
+import { enableAutoSync, disableAutoSync, getSyncStatus, manualSync } from '@/utils/cloudSync';
 import { WeeklyReport } from './WeeklyReport';
 import { TaskInfoPopup } from './TaskInfoPopup';
 
@@ -33,9 +34,20 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
   const [showWeeklyReport, setShowWeeklyReport] = useState(false);
   const [todayRoutineItems, setTodayRoutineItems] = useState(getTodayRoutineItems());
   const [selectedTask, setSelectedTask] = useState<RoutineItem | null>(null);
+  const [syncStatus, setSyncStatus] = useState<{ lastSync: string | null; isOnline: boolean }>({ lastSync: null, isOnline: true });
+  const [isManualSyncing, setIsManualSyncing] = useState(false);
 
   useEffect(() => {
     initializeTracker();
+
+    // Initialize cloud sync
+    enableAutoSync(userId);
+    setSyncStatus(getSyncStatus());
+
+    // Cleanup on unmount
+    return () => {
+      disableAutoSync();
+    };
   }, [userId]);
 
   // Update routine items when day changes
@@ -131,6 +143,21 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
 
   const closeWeeklyReport = () => {
     setShowWeeklyReport(false);
+  };
+
+  const handleManualSync = async () => {
+    setIsManualSyncing(true);
+    try {
+      const result = await manualSync(userId);
+      setSyncStatus(getSyncStatus());
+
+      // Show sync result (you could add a toast notification here)
+      console.log(result.message);
+    } catch (error) {
+      console.error('Manual sync failed:', error);
+    } finally {
+      setIsManualSyncing(false);
+    }
   };
 
   const openTaskInfo = (task: RoutineItem) => {
@@ -237,6 +264,19 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
                     >
                       <span>📊</span>
                       <span>Weekly Report</span>
+                    </button>
+                    <button
+                      onClick={handleManualSync}
+                      disabled={isManualSyncing}
+                      className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center space-x-2 disabled:opacity-50"
+                    >
+                      <span>{isManualSyncing ? '🔄' : '☁️'}</span>
+                      <span>{isManualSyncing ? 'Syncing...' : 'Sync Data'}</span>
+                      {syncStatus.lastSync && (
+                        <span className="text-xs text-gray-500 ml-auto">
+                          {new Date(syncStatus.lastSync).toLocaleTimeString()}
+                        </span>
+                      )}
                     </button>
                     <div className="border-t border-gray-100 my-1"></div>
                     <button
@@ -370,6 +410,11 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
           <p className="text-xs mt-2">
             Progress auto-saves • Resets at midnight • Access Weekly Report from menu
           </p>
+          {syncStatus.lastSync && (
+            <p className="text-xs mt-1 text-green-600">
+              ☁️ Last synced: {new Date(syncStatus.lastSync).toLocaleString()}
+            </p>
+          )}
           <p className="text-xs mt-2">
             Built with ❤️ by <span className="font-semibold text-indigo-600">Tech Talk</span>
           </p>
