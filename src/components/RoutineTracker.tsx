@@ -41,7 +41,7 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
     initializeTracker();
 
     // Initialize cloud sync
-    enableAutoSync(userId);
+    enableAutoSync();
     setSyncStatus(getSyncStatus());
 
     // Cleanup on unmount
@@ -148,7 +148,7 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
   const handleManualSync = async () => {
     setIsManualSyncing(true);
     try {
-      const result = await manualSync(userId);
+      const result = await manualSync();
       setSyncStatus(getSyncStatus());
 
       // Show sync result (you could add a toast notification here)

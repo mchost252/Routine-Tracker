@@ -3,27 +3,11 @@
 
 import { DailyProgress, User } from '@/types';
 
-// Free JSON storage service endpoint
-const CLOUD_STORAGE_BASE = 'https://api.jsonbin.io/v3/b';
-const CLOUD_STORAGE_KEY = 'routine-tracker-sync'; // Simple key for demo
-
 interface CloudData {
   users: User[];
   progress: DailyProgress[];
   lastSync: string;
 }
-
-// Simple hash function to create user-specific storage bins
-const createUserBin = (userId: string): string => {
-  // Create a simple hash from userId for storage bin
-  let hash = 0;
-  for (let i = 0; i < userId.length; i++) {
-    const char = userId.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
-  }
-  return Math.abs(hash).toString(36);
-};
 
 // Fallback to localStorage if cloud sync fails
 const getLocalData = (): CloudData => {
@@ -44,7 +28,7 @@ const saveLocalData = (data: CloudData): void => {
 };
 
 // Simple cloud sync using localStorage as primary with sync indicator
-export const syncToCloud = async (userId: string): Promise<boolean> => {
+export const syncToCloud = async (): Promise<boolean> => {
   try {
     // For now, we'll use localStorage but add sync status
     const data = getLocalData();
@@ -60,7 +44,7 @@ export const syncToCloud = async (userId: string): Promise<boolean> => {
   }
 };
 
-export const syncFromCloud = async (userId: string): Promise<boolean> => {
+export const syncFromCloud = async (): Promise<boolean> => {
   try {
     // For now, just return local data with sync timestamp
     const lastSync = localStorage.getItem('routine_tracker_last_sync');
@@ -75,36 +59,36 @@ export const syncFromCloud = async (userId: string): Promise<boolean> => {
 };
 
 // Auto-sync function that runs periodically
-export const enableAutoSync = (userId: string): void => {
+export const enableAutoSync = (): void => {
   // Sync every 30 seconds when app is active
   const syncInterval = setInterval(async () => {
     if (document.visibilityState === 'visible') {
-      await syncToCloud(userId);
+      await syncToCloud();
     }
   }, 30000);
 
   // Sync when page becomes visible (user switches back to app)
   document.addEventListener('visibilitychange', async () => {
     if (document.visibilityState === 'visible') {
-      await syncFromCloud(userId);
-      await syncToCloud(userId);
+      await syncFromCloud();
+      await syncToCloud();
     }
   });
 
   // Sync before page unload
   window.addEventListener('beforeunload', async () => {
-    await syncToCloud(userId);
+    await syncToCloud();
   });
 
   // Store interval ID for cleanup
-  (window as any).routineTrackerSyncInterval = syncInterval;
+  (window as unknown as Record<string, unknown>).routineTrackerSyncInterval = syncInterval;
 };
 
 export const disableAutoSync = (): void => {
-  const interval = (window as any).routineTrackerSyncInterval;
+  const interval = (window as unknown as Record<string, unknown>).routineTrackerSyncInterval;
   if (interval) {
-    clearInterval(interval);
-    delete (window as any).routineTrackerSyncInterval;
+    clearInterval(interval as NodeJS.Timeout);
+    delete (window as unknown as Record<string, unknown>).routineTrackerSyncInterval;
   }
 };
 
@@ -118,9 +102,9 @@ export const getSyncStatus = (): { lastSync: string | null; isOnline: boolean } 
 };
 
 // Manual sync trigger for user
-export const manualSync = async (userId: string): Promise<{ success: boolean; message: string }> => {
+export const manualSync = async (): Promise<{ success: boolean; message: string }> => {
   try {
-    const syncSuccess = await syncToCloud(userId);
+    const syncSuccess = await syncToCloud();
     if (syncSuccess) {
       return {
         success: true,
@@ -132,7 +116,7 @@ export const manualSync = async (userId: string): Promise<{ success: boolean; me
         message: 'Sync failed. Using local storage. 📱'
       };
     }
-  } catch (error) {
+  } catch {
     return {
       success: false,
       message: 'Sync error. Data saved locally. 💾'
