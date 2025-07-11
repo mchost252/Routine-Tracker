@@ -71,9 +71,25 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
     setIsLoading(true);
 
     try {
-      // First sync from cloud to get latest data
+      // Get local data first
+      const localUsers = JSON.parse(localStorage.getItem('routine_tracker_users') || '[]');
+      const localProgress = JSON.parse(localStorage.getItem('routine_tracker_progress') || '[]');
+
+      console.log('📱 Local data before sync:', { users: localUsers.length, progress: localProgress.length });
+
+      // Sync from cloud to get latest data
       console.log('🔄 Syncing latest data from cloud...');
-      await syncFromCloud();
+      const syncSuccess = await syncFromCloud();
+
+      if (syncSuccess) {
+        console.log('✅ Cloud sync successful, checking for data changes...');
+
+        // Get data after cloud sync
+        const cloudUsers = JSON.parse(localStorage.getItem('routine_tracker_users') || '[]');
+        const cloudProgress = JSON.parse(localStorage.getItem('routine_tracker_progress') || '[]');
+
+        console.log('☁️ Cloud data after sync:', { users: cloudUsers.length, progress: cloudProgress.length });
+      }
 
       // Check for daily reset
       checkAndPerformDailyReset(userId);
@@ -83,8 +99,12 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
       const currentUser = users.find((u: { id: string; name: string }) => u.id === userId);
       setUser(currentUser);
 
+      console.log('👤 Current user after sync:', currentUser);
+
       // Get today's progress (after cloud sync)
       const todayProgress = getTodayProgress(userId);
+
+      console.log('📊 Today\'s progress for user:', todayProgress);
 
       if (todayProgress) {
         setProgress(todayProgress);
@@ -98,6 +118,9 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
         };
         setProgress(newProgress);
         saveDailyProgress(newProgress);
+
+        // Sync new progress to cloud
+        await syncToCloud();
       }
     } catch (error) {
       console.error('Error initializing tracker:', error);
@@ -156,13 +179,50 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
   const handleManualSync = async () => {
     setIsManualSyncing(true);
     try {
-      const result = await manualSync();
-      setSyncStatus(getSyncStatus());
+      console.log('🔄 Manual sync started...');
 
-      // Show sync result (you could add a toast notification here)
-      console.log(result.message);
+      // Get current local data
+      const localUsers = JSON.parse(localStorage.getItem('routine_tracker_users') || '[]');
+      const localProgress = JSON.parse(localStorage.getItem('routine_tracker_progress') || '[]');
+      const userProgress = localProgress.filter((p: DailyProgress) => p.userId === userId);
+
+      console.log('📱 Local data before manual sync:', {
+        users: localUsers.length,
+        totalProgress: localProgress.length,
+        userProgress: userProgress.length,
+        currentUser: userId
+      });
+
+      // First sync from cloud
+      console.log('📥 Downloading latest from cloud...');
+      await syncFromCloud();
+
+      // Then sync to cloud
+      console.log('📤 Uploading current data to cloud...');
+      const result = await manualSync();
+
+      // Get data after sync
+      const syncedUsers = JSON.parse(localStorage.getItem('routine_tracker_users') || '[]');
+      const syncedProgress = JSON.parse(localStorage.getItem('routine_tracker_progress') || '[]');
+      const syncedUserProgress = syncedProgress.filter((p: DailyProgress) => p.userId === userId);
+
+      console.log('☁️ Data after manual sync:', {
+        users: syncedUsers.length,
+        totalProgress: syncedProgress.length,
+        userProgress: syncedUserProgress.length
+      });
+
+      // Refresh current progress
+      const refreshedProgress = getTodayProgress(userId);
+      if (refreshedProgress) {
+        setProgress(refreshedProgress);
+        console.log('🔄 Refreshed current progress:', refreshedProgress);
+      }
+
+      setSyncStatus(getSyncStatus());
+      console.log('✅ Manual sync completed:', result.message);
     } catch (error) {
-      console.error('Manual sync failed:', error);
+      console.error('❌ Manual sync failed:', error);
     } finally {
       setIsManualSyncing(false);
     }

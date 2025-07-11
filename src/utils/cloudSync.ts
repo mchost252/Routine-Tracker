@@ -31,6 +31,52 @@ const saveLocalData = (data: CloudData): void => {
   localStorage.setItem('routine_tracker_last_sync', data.lastSync);
 };
 
+// Merge cloud and local data intelligently
+const mergeCloudAndLocalData = (localData: CloudData, cloudData: CloudData): CloudData => {
+  // Merge users (prefer cloud data for user info, but keep all users)
+  const allUsers = [...cloudData.users];
+  localData.users.forEach(localUser => {
+    const existsInCloud = cloudData.users.find(cloudUser => cloudUser.id === localUser.id);
+    if (!existsInCloud) {
+      allUsers.push(localUser);
+    }
+  });
+
+  // Merge progress (keep the most recent version of each day's progress)
+  const allProgress = [...cloudData.progress];
+  localData.progress.forEach(localProgress => {
+    const existingIndex = allProgress.findIndex(
+      cloudProgress =>
+        cloudProgress.userId === localProgress.userId &&
+        cloudProgress.date === localProgress.date
+    );
+
+    if (existingIndex >= 0) {
+      // Compare timestamps and keep the most recent
+      const cloudProgress = allProgress[existingIndex];
+      const localTime = new Date(localProgress.lastUpdated).getTime();
+      const cloudTime = new Date(cloudProgress.lastUpdated).getTime();
+
+      if (localTime > cloudTime) {
+        console.log(`🔄 Local progress is newer for ${localProgress.date}, keeping local version`);
+        allProgress[existingIndex] = localProgress;
+      } else {
+        console.log(`☁️ Cloud progress is newer for ${cloudProgress.date}, keeping cloud version`);
+      }
+    } else {
+      // Progress doesn't exist in cloud, add it
+      console.log(`➕ Adding local progress for ${localProgress.date} to merged data`);
+      allProgress.push(localProgress);
+    }
+  });
+
+  return {
+    users: allUsers,
+    progress: allProgress,
+    lastSync: new Date().toISOString()
+  };
+};
+
 // Real cloud sync to JSONBin.io
 export const syncToCloud = async (): Promise<boolean> => {
   try {
@@ -76,6 +122,13 @@ export const syncFromCloud = async (): Promise<boolean> => {
   try {
     console.log('📥 Downloading from cloud...');
 
+    // Get current local data before overwriting
+    const localData = getLocalData();
+    console.log('📱 Current local data before cloud sync:', {
+      users: localData.users.length,
+      progress: localData.progress.length
+    });
+
     const response = await fetch(`${JSONBIN_API_URL}/latest`, {
       method: 'GET',
       headers: {
@@ -87,12 +140,24 @@ export const syncFromCloud = async (): Promise<boolean> => {
       const result = await response.json();
       const cloudData: CloudData = result.record;
 
-      console.log('📥 Downloaded cloud data:', cloudData);
+      console.log('📥 Downloaded cloud data:', {
+        users: cloudData.users.length,
+        progress: cloudData.progress.length,
+        lastSync: cloudData.lastSync
+      });
 
-      // Save cloud data to local storage
-      saveLocalData(cloudData);
+      // Merge data instead of overwriting
+      const mergedData = mergeCloudAndLocalData(localData, cloudData);
 
-      console.log('✅ Data downloaded from cloud successfully');
+      console.log('🔄 Merged data:', {
+        users: mergedData.users.length,
+        progress: mergedData.progress.length
+      });
+
+      // Save merged data to local storage
+      saveLocalData(mergedData);
+
+      console.log('✅ Data downloaded and merged successfully');
       console.log('📱 Last cloud sync:', new Date(cloudData.lastSync).toLocaleString());
       return true;
     } else {
