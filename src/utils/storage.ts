@@ -83,6 +83,26 @@ export const userHasPin = (userId: string): boolean => {
   return !!(user && user.hasPinSetup);
 };
 
+export const changePinForUser = (userId: string, currentPin: string, newPin: string): boolean => {
+  // First verify the current PIN
+  if (!verifyPin(userId, currentPin)) {
+    return false; // Current PIN is incorrect
+  }
+
+  // If current PIN is correct, set the new PIN
+  const users = getUsers();
+  const userIndex = users.findIndex(u => u.id === userId);
+
+  if (userIndex !== -1) {
+    users[userIndex].pin = hashPin(newPin);
+    users[userIndex].hasPinSetup = true;
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+    return true; // PIN changed successfully
+  }
+
+  return false; // User not found
+};
+
 // Daily progress management
 export const saveDailyProgress = (progress: DailyProgress): void => {
   if (typeof window === 'undefined') return;
