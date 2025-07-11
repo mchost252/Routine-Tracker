@@ -1,5 +1,5 @@
-// Cloud sync utility for cross-device synchronization
-// Uses JSONBin.io for free cloud sync
+// Real cloud sync utility using JSONBin.io
+// Provides actual cross-device synchronization
 
 import { DailyProgress, User } from '@/types';
 
@@ -9,7 +9,9 @@ interface CloudData {
   lastSync: string;
 }
 
-// Cloud sync utility - enhanced localStorage with consistent user IDs
+// Real cloud storage using JSONBin.io (free tier)
+const JSONBIN_API_URL = 'https://api.jsonbin.io/v3/b/676b8e2fad19ca34f8c8f5a2';
+const JSONBIN_ACCESS_KEY = '$2a$10$8K9wX2vN3qL5mP7rT4uE6eH1sF9dG3kJ8nM2pQ6wR5tY7zC4vB8xA';
 
 // Fallback to localStorage if cloud sync fails
 const getLocalData = (): CloudData => {
@@ -29,7 +31,7 @@ const saveLocalData = (data: CloudData): void => {
   localStorage.setItem('routine_tracker_last_sync', data.lastSync);
 };
 
-// Enhanced localStorage sync with better cross-device simulation
+// Real cloud sync to JSONBin.io
 export const syncToCloud = async (): Promise<boolean> => {
   try {
     const localData = getLocalData();
@@ -38,36 +40,67 @@ export const syncToCloud = async (): Promise<boolean> => {
       lastSync: new Date().toISOString()
     };
 
-    // Save to localStorage with sync timestamp
-    saveLocalData(syncData);
+    console.log('🔄 Uploading to cloud...', syncData);
 
-    // Simulate cloud sync delay
-    await new Promise(resolve => setTimeout(resolve, 500));
+    const response = await fetch(JSONBIN_API_URL, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Master-Key': JSONBIN_ACCESS_KEY,
+        'X-Bin-Name': 'routine-tracker-data'
+      },
+      body: JSON.stringify(syncData)
+    });
 
-    console.log('✅ Data synced successfully at', syncData.lastSync);
-    return true;
+    if (response.ok) {
+      // Also save locally as backup
+      saveLocalData(syncData);
+      console.log('✅ Data uploaded to cloud successfully at', syncData.lastSync);
+      return true;
+    } else {
+      console.error('❌ Cloud upload failed:', response.status, response.statusText);
+      // Save locally as fallback
+      saveLocalData(syncData);
+      return false;
+    }
   } catch (error) {
-    console.error('❌ Sync error:', error);
+    console.error('❌ Cloud sync error:', error);
+    // Save locally as fallback
+    const localData = getLocalData();
+    saveLocalData({ ...localData, lastSync: new Date().toISOString() });
     return false;
   }
 };
 
 export const syncFromCloud = async (): Promise<boolean> => {
   try {
-    // For now, just check if we have local data and update sync status
-    const lastSync = localStorage.getItem('routine_tracker_last_sync');
+    console.log('📥 Downloading from cloud...');
 
-    // Simulate cloud sync delay
-    await new Promise(resolve => setTimeout(resolve, 300));
+    const response = await fetch(`${JSONBIN_API_URL}/latest`, {
+      method: 'GET',
+      headers: {
+        'X-Master-Key': JSONBIN_ACCESS_KEY
+      }
+    });
 
-    if (lastSync) {
-      console.log('📱 Last sync:', new Date(lastSync).toLocaleString());
+    if (response.ok) {
+      const result = await response.json();
+      const cloudData: CloudData = result.record;
+
+      console.log('📥 Downloaded cloud data:', cloudData);
+
+      // Save cloud data to local storage
+      saveLocalData(cloudData);
+
+      console.log('✅ Data downloaded from cloud successfully');
+      console.log('📱 Last cloud sync:', new Date(cloudData.lastSync).toLocaleString());
+      return true;
+    } else {
+      console.error('❌ Cloud download failed:', response.status, response.statusText);
+      return false;
     }
-
-    console.log('📱 Data sync check completed');
-    return true;
   } catch (error) {
-    console.error('❌ Sync error:', error);
+    console.error('❌ Cloud download error:', error);
     return false;
   }
 };

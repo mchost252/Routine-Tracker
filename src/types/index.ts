@@ -338,5 +338,10 @@ export const generateUserId = (name: string): string => {
 
   // Convert to positive number and add prefix
   const hashString = Math.abs(hash).toString(36);
-  return `user-${hashString}`;
+  const userId = `user-${hashString}`;
+
+  // Debug logging
+  console.log(`🔑 generateUserId("${name}") -> "${userId}"`);
+
+  return userId;
 };
