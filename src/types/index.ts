@@ -27,6 +27,8 @@ export interface User {
   name: string;
   createdAt: string; // ISO timestamp
   lastActive: string; // ISO timestamp
+  pin?: string; // Optional PIN for security (hashed)
+  hasPinSetup?: boolean; // Whether user has set up PIN
 }
 
 export interface HistoricalData {
@@ -325,23 +327,16 @@ export const calculateCompletionRate = (completed: string[], total: number): num
   return Math.round((completed.length / total) * 100);
 };
 
-// Generate consistent user ID based on name (no timestamp)
+// Generate user ID (consistent based on name only)
 export const generateUserId = (name: string): string => {
-  // Create a consistent hash from the name
-  const normalizedName = name.toLowerCase().trim();
+  // Create a consistent ID based on the name only (no timestamp)
+  const nameHash = name.toLowerCase().replace(/\s+/g, '-');
+  // Add a simple hash to make it more unique but still consistent
   let hash = 0;
-  for (let i = 0; i < normalizedName.length; i++) {
-    const char = normalizedName.charCodeAt(i);
+  for (let i = 0; i < name.length; i++) {
+    const char = name.charCodeAt(i);
     hash = ((hash << 5) - hash) + char;
     hash = hash & hash; // Convert to 32-bit integer
   }
-
-  // Convert to positive number and add prefix
-  const hashString = Math.abs(hash).toString(36);
-  const userId = `user-${hashString}`;
-
-  // Debug logging
-  console.log(`🔑 generateUserId("${name}") -> "${userId}"`);
-
-  return userId;
+  return `${nameHash}-${Math.abs(hash)}`;
 };

@@ -3,11 +3,15 @@
 import { useState, useEffect } from 'react';
 import { RoutineTracker } from '@/components/RoutineTracker';
 import { WelcomeScreen } from '@/components/WelcomeScreen';
-import { getCurrentUser } from '@/utils/storage';
+import { PinInputScreen } from '@/components/PinInputScreen';
+import { getCurrentUser, userHasPin, verifyPin, getUsers } from '@/utils/storage';
 
 export default function Home() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showPinInput, setShowPinInput] = useState(false);
+  const [pendingUserId, setPendingUserId] = useState<string | null>(null);
+  const [pinError, setPinError] = useState('');
 
   useEffect(() => {
     // Check if user is already logged in
@@ -17,7 +21,44 @@ export default function Home() {
   }, []);
 
   const handleUserLogin = (userId: string) => {
-    setCurrentUserId(userId);
+    // Check if user has PIN setup
+    if (userHasPin(userId)) {
+      // Show PIN input screen
+      setPendingUserId(userId);
+      setShowPinInput(true);
+      setPinError('');
+    } else {
+      // Direct login (no PIN required)
+      setCurrentUserId(userId);
+    }
+  };
+
+  const handlePinSubmit = (pin: string) => {
+    if (!pendingUserId) return;
+
+    if (verifyPin(pendingUserId, pin)) {
+      // PIN correct, log in user
+      setCurrentUserId(pendingUserId);
+      setShowPinInput(false);
+      setPendingUserId(null);
+      setPinError('');
+    } else {
+      // PIN incorrect
+      setPinError('Incorrect PIN. Please try again.');
+    }
+  };
+
+  const handlePinBack = () => {
+    setShowPinInput(false);
+    setPendingUserId(null);
+    setPinError('');
+  };
+
+  const getPendingUserName = (): string => {
+    if (!pendingUserId) return '';
+    const users = getUsers();
+    const user = users.find(u => u.id === pendingUserId);
+    return user?.name || '';
   };
 
   if (isLoading) {
@@ -36,6 +77,18 @@ export default function Home() {
           </p>
         </div>
       </div>
+    );
+  }
+
+  // Show PIN input screen if needed
+  if (showPinInput && pendingUserId) {
+    return (
+      <PinInputScreen
+        userName={getPendingUserName()}
+        onPinSubmit={handlePinSubmit}
+        onBack={handlePinBack}
+        error={pinError}
+      />
     );
   }
 

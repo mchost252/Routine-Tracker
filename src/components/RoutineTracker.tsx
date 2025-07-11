@@ -14,11 +14,13 @@ import {
   getTodayProgress,
   saveDailyProgress,
   checkAndPerformDailyReset,
-  setCurrentUser
+  setCurrentUser,
+  userHasPin,
+  setPinForUser
 } from '@/utils/storage';
-import { enableAutoSync, disableAutoSync, getSyncStatus, syncFromCloud, syncToCloud } from '@/utils/cloudSync';
 import { WeeklyReport } from './WeeklyReport';
 import { TaskInfoPopup } from './TaskInfoPopup';
+import { PinSetupPopup } from './PinSetupPopup';
 
 interface RoutineTrackerProps {
   userId: string;
@@ -34,21 +36,10 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
   const [showWeeklyReport, setShowWeeklyReport] = useState(false);
   const [todayRoutineItems, setTodayRoutineItems] = useState(getTodayRoutineItems());
   const [selectedTask, setSelectedTask] = useState<RoutineItem | null>(null);
-  const [syncStatus, setSyncStatus] = useState<{ lastSync: string | null; isOnline: boolean }>({ lastSync: null, isOnline: true });
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
+  const [showPinSetup, setShowPinSetup] = useState(false);
 
   useEffect(() => {
     initializeTracker();
-
-    // Initialize cloud sync
-    enableAutoSync();
-    setSyncStatus(getSyncStatus());
-
-    // Cleanup on unmount
-    return () => {
-      disableAutoSync();
-    };
   }, [userId]);
 
   // Update routine items when day changes
@@ -70,25 +61,19 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
 
   const initializeTracker = async () => {
     setIsLoading(true);
-
+    
     try {
-      console.log('🔄 Initializing tracker with local data only...');
-
       // Check for daily reset
       checkAndPerformDailyReset(userId);
-
-      // Get user info from local storage
+      
+      // Get user info
       const users = JSON.parse(localStorage.getItem('routine_tracker_users') || '[]');
       const currentUser = users.find((u: { id: string; name: string }) => u.id === userId);
       setUser(currentUser);
-
-      console.log('👤 Current user:', currentUser);
-
-      // Get today's progress from local storage
+      
+      // Get today's progress
       const todayProgress = getTodayProgress(userId);
-
-      console.log('📊 Today\'s local progress for user:', todayProgress);
-
+      
       if (todayProgress) {
         setProgress(todayProgress);
       } else {
@@ -103,7 +88,13 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
         saveDailyProgress(newProgress);
       }
 
-      console.log('✅ Tracker initialized with local data. Use Download/Upload buttons to sync with cloud.');
+      // Check if user needs PIN setup (only show once)
+      if (!userHasPin(userId)) {
+        // Show PIN setup popup after a short delay
+        setTimeout(() => {
+          setShowPinSetup(true);
+        }, 1000);
+      }
     } catch (error) {
       console.error('Error initializing tracker:', error);
     } finally {
@@ -129,8 +120,6 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
 
       setProgress(updatedProgress);
       saveDailyProgress(updatedProgress);
-
-      console.log('✅ Task progress saved locally. Use "Upload to Cloud" to sync with other devices.');
     } catch (error) {
       console.error('Error updating progress:', error);
     } finally {
@@ -156,88 +145,13 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
     setShowWeeklyReport(false);
   };
 
-  const handleDownloadFromCloud = async () => {
-    setIsDownloading(true);
-    try {
-      console.log('� Download from cloud started...');
-
-      // Get current local data
-      const localUsers = JSON.parse(localStorage.getItem('routine_tracker_users') || '[]');
-      const localProgress = JSON.parse(localStorage.getItem('routine_tracker_progress') || '[]');
-      const userProgress = localProgress.filter((p: DailyProgress) => p.userId === userId);
-
-      console.log('📱 Local data before download:', {
-        users: localUsers.length,
-        totalProgress: localProgress.length,
-        userProgress: userProgress.length,
-        currentUser: userId
-      });
-
-      // Download from cloud
-      const success = await syncFromCloud();
-
-      if (success) {
-        // Get data after download
-        const downloadedUsers = JSON.parse(localStorage.getItem('routine_tracker_users') || '[]');
-        const downloadedProgress = JSON.parse(localStorage.getItem('routine_tracker_progress') || '[]');
-        const downloadedUserProgress = downloadedProgress.filter((p: DailyProgress) => p.userId === userId);
-
-        console.log('☁️ Data after download:', {
-          users: downloadedUsers.length,
-          totalProgress: downloadedProgress.length,
-          userProgress: downloadedUserProgress.length
-        });
-
-        // Refresh current progress
-        const refreshedProgress = getTodayProgress(userId);
-        if (refreshedProgress) {
-          setProgress(refreshedProgress);
-          console.log('🔄 Refreshed current progress after download:', refreshedProgress);
-        }
-
-        setSyncStatus(getSyncStatus());
-        console.log('✅ Download completed successfully!');
-      } else {
-        console.log('❌ Download failed');
-      }
-    } catch (error) {
-      console.error('❌ Download failed:', error);
-    } finally {
-      setIsDownloading(false);
-    }
+  const handleSetPin = (pin: string) => {
+    setPinForUser(userId, pin);
+    setShowPinSetup(false);
   };
 
-  const handleUploadToCloud = async () => {
-    setIsUploading(true);
-    try {
-      console.log('📤 Upload to cloud started...');
-
-      // Get current local data
-      const localUsers = JSON.parse(localStorage.getItem('routine_tracker_users') || '[]');
-      const localProgress = JSON.parse(localStorage.getItem('routine_tracker_progress') || '[]');
-      const userProgress = localProgress.filter((p: DailyProgress) => p.userId === userId);
-
-      console.log('📱 Local data being uploaded:', {
-        users: localUsers.length,
-        totalProgress: localProgress.length,
-        userProgress: userProgress.length,
-        currentUser: userId
-      });
-
-      // Upload to cloud
-      const success = await syncToCloud();
-
-      if (success) {
-        setSyncStatus(getSyncStatus());
-        console.log('✅ Upload completed successfully!');
-      } else {
-        console.log('❌ Upload failed');
-      }
-    } catch (error) {
-      console.error('❌ Upload failed:', error);
-    } finally {
-      setIsUploading(false);
-    }
+  const handleSkipPin = () => {
+    setShowPinSetup(false);
   };
 
   const openTaskInfo = (task: RoutineItem) => {
@@ -344,27 +258,6 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
                     >
                       <span>📊</span>
                       <span>Weekly Report</span>
-                    </button>
-                    <button
-                      onClick={handleDownloadFromCloud}
-                      disabled={isDownloading}
-                      className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center space-x-2 disabled:opacity-50"
-                    >
-                      <span>{isDownloading ? '🔄' : '📥'}</span>
-                      <span>{isDownloading ? 'Downloading...' : 'Download from Cloud'}</span>
-                    </button>
-                    <button
-                      onClick={handleUploadToCloud}
-                      disabled={isUploading}
-                      className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center space-x-2 disabled:opacity-50"
-                    >
-                      <span>{isUploading ? '🔄' : '📤'}</span>
-                      <span>{isUploading ? 'Uploading...' : 'Upload to Cloud'}</span>
-                      {syncStatus.lastSync && (
-                        <span className="text-xs text-gray-500 ml-auto">
-                          {new Date(syncStatus.lastSync).toLocaleTimeString()}
-                        </span>
-                      )}
                     </button>
                     <div className="border-t border-gray-100 my-1"></div>
                     <button
@@ -498,11 +391,6 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
           <p className="text-xs mt-2">
             Progress auto-saves • Resets at midnight • Access Weekly Report from menu
           </p>
-          {syncStatus.lastSync && (
-            <p className="text-xs mt-1 text-green-600">
-              ☁️ Last synced: {new Date(syncStatus.lastSync).toLocaleString()}
-            </p>
-          )}
           <p className="text-xs mt-2">
             Built with ❤️ by <span className="font-semibold text-indigo-600">Tech Talk</span>
           </p>
@@ -516,6 +404,15 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
         {/* Task Info Popup */}
         {selectedTask && (
           <TaskInfoPopup item={selectedTask} onClose={closeTaskInfo} />
+        )}
+
+        {/* PIN Setup Popup */}
+        {showPinSetup && user && (
+          <PinSetupPopup
+            userName={user.name}
+            onSetPin={handleSetPin}
+            onSkip={handleSkipPin}
+          />
         )}
       </div>
     </div>

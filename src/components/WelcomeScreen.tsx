@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { generateUserId, getCurrentTimestamp } from '@/types';
 import { saveUser, getUserByName, setCurrentUser } from '@/utils/storage';
 import { isUserAuthorized, getUserDisplayName } from '@/config/auth';
-import { syncFromCloud, syncToCloud } from '@/utils/cloudSync';
 
 interface WelcomeScreenProps {
   onUserLogin: (userId: string) => void;
@@ -30,42 +29,26 @@ export function WelcomeScreen({ onUserLogin }: WelcomeScreenProps) {
         return;
       }
 
-      // First, try to sync from cloud to get latest data
-      console.log('🔄 Syncing from cloud...');
-      await syncFromCloud();
-
       // Get the display name for authorized user
       const displayName = getUserDisplayName(name.trim());
 
-      // Generate consistent user ID
-      const userId = generateUserId(name.trim());
-      console.log('🔑 Generated user ID:', userId, 'for name:', name.trim());
-
-      // Check if user already exists (after cloud sync)
-      let user = getUserByName(name.trim());
+      // Check if user already exists (try both input name and display name)
+      let user = getUserByName(name.trim()) || getUserByName(displayName);
 
       if (!user) {
-        // Create new user with consistent ID
+        // Create new user with consistent ID based on input name
         user = {
-          id: userId,
+          id: generateUserId(name.trim()),
           name: displayName,
           createdAt: getCurrentTimestamp(),
           lastActive: getCurrentTimestamp()
         };
-        console.log('👤 Creating new user:', user);
         saveUser(user);
-
-        // Sync new user to cloud
-        await syncToCloud();
       } else {
         // Update last active time and display name
         user.lastActive = getCurrentTimestamp();
         user.name = displayName; // Update to current display name
-        console.log('👤 Updating existing user:', user);
         saveUser(user);
-
-        // Sync updated user info to cloud
-        await syncToCloud();
       }
 
       // Set as current user

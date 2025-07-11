@@ -46,6 +46,43 @@ export const getCurrentUser = (): string | null => {
   return localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
 };
 
+// PIN management functions
+export const hashPin = (pin: string): string => {
+  // Simple hash function for PIN (in production, use a proper hashing library)
+  let hash = 0;
+  for (let i = 0; i < pin.length; i++) {
+    const char = pin.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return Math.abs(hash).toString();
+};
+
+export const setPinForUser = (userId: string, pin: string): void => {
+  const users = getUsers();
+  const userIndex = users.findIndex(u => u.id === userId);
+
+  if (userIndex !== -1) {
+    users[userIndex].pin = hashPin(pin);
+    users[userIndex].hasPinSetup = true;
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+  }
+};
+
+export const verifyPin = (userId: string, pin: string): boolean => {
+  const users = getUsers();
+  const user = users.find(u => u.id === userId);
+
+  if (!user || !user.pin) return false;
+  return user.pin === hashPin(pin);
+};
+
+export const userHasPin = (userId: string): boolean => {
+  const users = getUsers();
+  const user = users.find(u => u.id === userId);
+  return !!(user && user.hasPinSetup);
+};
+
 // Daily progress management
 export const saveDailyProgress = (progress: DailyProgress): void => {
   if (typeof window === 'undefined') return;
