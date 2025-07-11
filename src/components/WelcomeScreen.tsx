@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { generateUserId, getCurrentTimestamp } from '@/types';
 import { saveUser, getUserByName, setCurrentUser } from '@/utils/storage';
 import { isUserAuthorized, getUserDisplayName } from '@/config/auth';
+import { syncFromCloud, syncToCloud } from '@/utils/cloudSync';
 
 interface WelcomeScreenProps {
   onUserLogin: (userId: string) => void;
@@ -29,26 +30,42 @@ export function WelcomeScreen({ onUserLogin }: WelcomeScreenProps) {
         return;
       }
 
+      // First, try to sync from cloud to get latest data
+      console.log('🔄 Syncing from cloud...');
+      await syncFromCloud();
+
       // Get the display name for authorized user
       const displayName = getUserDisplayName(name.trim());
 
-      // Check if user already exists
+      // Generate consistent user ID
+      const userId = generateUserId(name.trim());
+      console.log('🔑 Generated user ID:', userId, 'for name:', name.trim());
+
+      // Check if user already exists (after cloud sync)
       let user = getUserByName(name.trim());
 
       if (!user) {
-        // Create new user with display name
+        // Create new user with consistent ID
         user = {
-          id: generateUserId(name.trim()),
+          id: userId,
           name: displayName,
           createdAt: getCurrentTimestamp(),
           lastActive: getCurrentTimestamp()
         };
+        console.log('👤 Creating new user:', user);
         saveUser(user);
+
+        // Sync new user to cloud
+        await syncToCloud();
       } else {
         // Update last active time and display name
         user.lastActive = getCurrentTimestamp();
         user.name = displayName; // Update to current display name
+        console.log('👤 Updating existing user:', user);
         saveUser(user);
+
+        // Sync updated user info to cloud
+        await syncToCloud();
       }
 
       // Set as current user

@@ -325,9 +325,18 @@ export const calculateCompletionRate = (completed: string[], total: number): num
   return Math.round((completed.length / total) * 100);
 };
 
-// Generate user ID (simple approach for now)
+// Generate consistent user ID based on name (no timestamp)
 export const generateUserId = (name: string): string => {
-  const timestamp = Date.now();
-  const nameHash = name.toLowerCase().replace(/\s+/g, '-');
-  return `${nameHash}-${timestamp}`;
+  // Create a consistent hash from the name
+  const normalizedName = name.toLowerCase().trim();
+  let hash = 0;
+  for (let i = 0; i < normalizedName.length; i++) {
+    const char = normalizedName.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+
+  // Convert to positive number and add prefix
+  const hashString = Math.abs(hash).toString(36);
+  return `user-${hashString}`;
 };

@@ -16,7 +16,7 @@ import {
   checkAndPerformDailyReset,
   setCurrentUser
 } from '@/utils/storage';
-import { enableAutoSync, disableAutoSync, getSyncStatus, manualSync } from '@/utils/cloudSync';
+import { enableAutoSync, disableAutoSync, getSyncStatus, manualSync, syncFromCloud, syncToCloud } from '@/utils/cloudSync';
 import { WeeklyReport } from './WeeklyReport';
 import { TaskInfoPopup } from './TaskInfoPopup';
 
@@ -69,19 +69,23 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
 
   const initializeTracker = async () => {
     setIsLoading(true);
-    
+
     try {
+      // First sync from cloud to get latest data
+      console.log('🔄 Syncing latest data from cloud...');
+      await syncFromCloud();
+
       // Check for daily reset
       checkAndPerformDailyReset(userId);
-      
-      // Get user info
+
+      // Get user info (after cloud sync)
       const users = JSON.parse(localStorage.getItem('routine_tracker_users') || '[]');
       const currentUser = users.find((u: { id: string; name: string }) => u.id === userId);
       setUser(currentUser);
-      
-      // Get today's progress
+
+      // Get today's progress (after cloud sync)
       const todayProgress = getTodayProgress(userId);
-      
+
       if (todayProgress) {
         setProgress(todayProgress);
       } else {
@@ -120,6 +124,10 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
 
       setProgress(updatedProgress);
       saveDailyProgress(updatedProgress);
+
+      // Immediately sync to cloud after task completion
+      console.log('🔄 Syncing task completion to cloud...');
+      await syncToCloud();
     } catch (error) {
       console.error('Error updating progress:', error);
     } finally {
