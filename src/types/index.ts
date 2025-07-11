@@ -267,9 +267,17 @@ export const DEFAULT_ROUTINE_ITEMS: RoutineItem[] = [
   }
 ];
 
+// Get Nigerian time (West Africa Time - UTC+1)
+const getNigerianTime = (): Date => {
+  // Create a date in Nigerian timezone
+  const now = new Date();
+  const nigerianTimeString = now.toLocaleString('en-US', { timeZone: 'Africa/Lagos' });
+  return new Date(nigerianTimeString);
+};
+
 // Get routine items for a specific day (filters by day of week)
 export const getRoutineItemsForDay = (date?: Date): RoutineItem[] => {
-  const targetDate = date || new Date();
+  const targetDate = date || getNigerianTime();
   const dayOfWeek = targetDate.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
 
   return DEFAULT_ROUTINE_ITEMS.filter(item => {
@@ -287,13 +295,24 @@ export const getTodayRoutineItems = (): RoutineItem[] => {
   return getRoutineItemsForDay();
 };
 
-// Utility functions for date handling
+// Utility functions for date handling (using Nigerian time)
 export const getCurrentDate = (): string => {
-  return new Date().toISOString().split('T')[0];
+  return getNigerianTime().toISOString().split('T')[0];
 };
 
 export const getCurrentTimestamp = (): string => {
-  return new Date().toISOString();
+  return getNigerianTime().toISOString();
+};
+
+// Get current Nigerian time for display
+export const getNigerianTimeDisplay = (): string => {
+  return new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'Africa/Lagos'
+  });
 };
 
 // Check if it's a new day (for reset logic)

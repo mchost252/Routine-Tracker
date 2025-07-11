@@ -7,6 +7,7 @@ import {
   getCurrentTimestamp,
   calculateCompletionRate,
   getTodayRoutineItems,
+  getNigerianTimeDisplay,
   RoutineItem
 } from '@/types';
 import {
@@ -161,8 +162,16 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
+          <img
+            src="/icon.png"
+            alt="Routine Tracker"
+            className="w-16 h-16 mx-auto mb-4 rounded-lg shadow-md"
+          />
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your tracker...</p>
+          <p className="text-gray-600 mb-2">Loading your tracker...</p>
+          <p className="text-sm text-indigo-600 font-semibold">
+            Built with ❤️ by Tech Talk
+          </p>
         </div>
       </div>
     );
@@ -185,12 +194,7 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
   }
 
   const completionRate = calculateCompletionRate(progress.completedItems, todayRoutineItems.length);
-  const currentDate = new Date().toLocaleDateString('en-US', { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
-  });
+  const currentDate = getNigerianTimeDisplay();
 
   return (
     <div className="min-h-screen p-4">
@@ -252,7 +256,7 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
           <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Today&apos;s Progress</p>
+                <p className="text-sm text-gray-600">Todays Progress</p>
                 <p className="text-2xl font-bold text-indigo-600">
                   {progress.completedItems.length}/{todayRoutineItems.length}
                 </p>
@@ -354,13 +358,13 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
         {/* Motivational Footer */}
         <div className="text-center mt-6 text-gray-600">
           <p className="text-sm">
-            {completionRate === 100 
-              ? "🎉 Amazing! You&apos;ve completed all your routines today!"
-              : completionRate >= 75 
-              ? "🔥 You&apos;re doing great! Keep it up!"
-              : completionRate >= 50 
-              ? "💪 Good progress! You&apos;re halfway there!"
-              : "🌱 Every step counts. You&apos;ve got this!"
+            {completionRate === 100
+              ? "🎉 Amazing! Youve completed all your routines today!"
+              : completionRate >= 75
+              ? "🔥 Youre doing great! Keep it up!"
+              : completionRate >= 50
+              ? "💪 Good progress! Youre halfway there!"
+              : "🌱 Every step counts. Youve got this!"
             }
           </p>
           <p className="text-xs mt-2">

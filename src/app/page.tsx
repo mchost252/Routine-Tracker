@@ -24,17 +24,15 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="mb-4">
-            <img
-              src="/icon.png"
-              alt="Routine Tracker"
-              className="w-16 h-16 mx-auto rounded-lg shadow-lg animate-pulse"
-            />
-          </div>
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 font-medium">Loading your routine tracker...</p>
-          <p className="text-gray-500 text-sm mt-2">
-            Built with ❤️ by <span className="font-semibold text-indigo-600">Tech Talk</span>
+          <img
+            src="/icon.png"
+            alt="Routine Tracker"
+            className="w-16 h-16 mx-auto mb-4 rounded-lg shadow-md"
+          />
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 mb-2">Loading your routine tracker...</p>
+          <p className="text-sm text-indigo-600 font-semibold">
+            Built with ❤️ by Tech Talk
           </p>
         </div>
       </div>
