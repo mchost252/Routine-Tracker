@@ -16,11 +16,13 @@ import {
   checkAndPerformDailyReset,
   setCurrentUser,
   userHasPin,
-  setPinForUser
+  setPinForUser,
+  changePinForUser
 } from '@/utils/storage';
 import { WeeklyReport } from './WeeklyReport';
 import { TaskInfoPopup } from './TaskInfoPopup';
 import { PinSetupPopup } from './PinSetupPopup';
+import { ChangePinPopup } from './ChangePinPopup';
 
 interface RoutineTrackerProps {
   userId: string;
@@ -37,29 +39,17 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
   const [todayRoutineItems, setTodayRoutineItems] = useState(getTodayRoutineItems());
   const [selectedTask, setSelectedTask] = useState<RoutineItem | null>(null);
   const [showPinSetup, setShowPinSetup] = useState(false);
+  const [showChangePinPopup, setShowChangePinPopup] = useState(false);
+  const [showPinChangeSuccess, setShowPinChangeSuccess] = useState(false);
 
   useEffect(() => {
     initializeTracker();
   }, [userId]);
 
-  // Update routine items when day changes and check for daily reset
+  // Update routine items when day changes
   useEffect(() => {
     const updateRoutineItems = () => {
       setTodayRoutineItems(getTodayRoutineItems());
-    };
-
-    const checkForDayChange = () => {
-      // Check if we need to perform daily reset
-      const resetPerformed = checkAndPerformDailyReset(userId);
-
-      if (resetPerformed) {
-        // Day has changed, reinitialize the tracker
-        console.log('Day changed detected, performing reset...');
-        initializeTracker();
-      }
-
-      // Update routine items for the new day
-      updateRoutineItems();
     };
 
     // Update immediately
@@ -67,29 +57,31 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
 
     // Set up interval to check for day change every minute
     const interval = setInterval(() => {
-      checkForDayChange();
+      updateRoutineItems();
     }, 60000); // Check every minute
 
     return () => clearInterval(interval);
-  }, [userId]);
+  }, []);
 
   const initializeTracker = async () => {
     setIsLoading(true);
-
+    
     try {
-      // Check for daily reset and perform if needed
-      const resetPerformed = checkAndPerformDailyReset(userId);
-
+      // Check for daily reset
+      checkAndPerformDailyReset(userId);
+      
       // Get user info
       const users = JSON.parse(localStorage.getItem('routine_tracker_users') || '[]');
       const currentUser = users.find((u: { id: string; name: string }) => u.id === userId);
       setUser(currentUser);
-
-      // Get today's progress (after potential reset)
+      
+      // Get today's progress
       const todayProgress = getTodayProgress(userId);
-
-      // If reset was performed or no progress exists for today, create fresh progress
-      if (resetPerformed || !todayProgress || todayProgress.date !== getCurrentDate()) {
+      
+      if (todayProgress) {
+        setProgress(todayProgress);
+      } else {
+        // Create new progress for today
         const newProgress: DailyProgress = {
           userId,
           date: getCurrentDate(),
@@ -98,8 +90,6 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
         };
         setProgress(newProgress);
         saveDailyProgress(newProgress);
-      } else {
-        setProgress(todayProgress);
       }
 
       // Check if user needs PIN setup (only show once)
@@ -174,6 +164,28 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
 
   const closeTaskInfo = () => {
     setSelectedTask(null);
+  };
+
+  const openChangePinPopup = () => {
+    setShowChangePinPopup(true);
+    setShowMenu(false);
+  };
+
+  const handleChangePin = (currentPin: string, newPin: string): boolean => {
+    const success = changePinForUser(userId, currentPin, newPin);
+    if (success) {
+      setShowChangePinPopup(false);
+      setShowPinChangeSuccess(true);
+      // Hide success message after 3 seconds
+      setTimeout(() => {
+        setShowPinChangeSuccess(false);
+      }, 3000);
+    }
+    return success;
+  };
+
+  const handleCancelChangePin = () => {
+    setShowChangePinPopup(false);
   };
 
   // Close menu when clicking outside
@@ -272,6 +284,13 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
                     >
                       <span>📊</span>
                       <span>Weekly Report</span>
+                    </button>
+                    <button
+                      onClick={openChangePinPopup}
+                      className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                    >
+                      <span>🔐</span>
+                      <span>Change PIN</span>
                     </button>
                     <div className="border-t border-gray-100 my-1"></div>
                     <button
@@ -427,6 +446,25 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
             onSetPin={handleSetPin}
             onSkip={handleSkipPin}
           />
+        )}
+
+        {/* Change PIN Popup */}
+        {showChangePinPopup && user && (
+          <ChangePinPopup
+            userName={user.name}
+            onChangePin={handleChangePin}
+            onCancel={handleCancelChangePin}
+          />
+        )}
+
+        {/* PIN Change Success Message */}
+        {showPinChangeSuccess && (
+          <div className="fixed top-4 right-4 z-50">
+            <div className="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center space-x-2">
+              <span>✅</span>
+              <span>PIN changed successfully!</span>
+            </div>
+          </div>
         )}
       </div>
     </div>
