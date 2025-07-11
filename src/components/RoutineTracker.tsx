@@ -16,7 +16,7 @@ import {
   checkAndPerformDailyReset,
   setCurrentUser
 } from '@/utils/storage';
-import { enableAutoSync, disableAutoSync, getSyncStatus, manualSync, syncFromCloud, syncToCloud } from '@/utils/cloudSync';
+import { enableAutoSync, disableAutoSync, getSyncStatus, syncFromCloud, syncToCloud } from '@/utils/cloudSync';
 import { WeeklyReport } from './WeeklyReport';
 import { TaskInfoPopup } from './TaskInfoPopup';
 
@@ -35,7 +35,8 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
   const [todayRoutineItems, setTodayRoutineItems] = useState(getTodayRoutineItems());
   const [selectedTask, setSelectedTask] = useState<RoutineItem | null>(null);
   const [syncStatus, setSyncStatus] = useState<{ lastSync: string | null; isOnline: boolean }>({ lastSync: null, isOnline: true });
-  const [isManualSyncing, setIsManualSyncing] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     initializeTracker();
@@ -71,40 +72,22 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
     setIsLoading(true);
 
     try {
-      // Get local data first
-      const localUsers = JSON.parse(localStorage.getItem('routine_tracker_users') || '[]');
-      const localProgress = JSON.parse(localStorage.getItem('routine_tracker_progress') || '[]');
-
-      console.log('📱 Local data before sync:', { users: localUsers.length, progress: localProgress.length });
-
-      // Sync from cloud to get latest data
-      console.log('🔄 Syncing latest data from cloud...');
-      const syncSuccess = await syncFromCloud();
-
-      if (syncSuccess) {
-        console.log('✅ Cloud sync successful, checking for data changes...');
-
-        // Get data after cloud sync
-        const cloudUsers = JSON.parse(localStorage.getItem('routine_tracker_users') || '[]');
-        const cloudProgress = JSON.parse(localStorage.getItem('routine_tracker_progress') || '[]');
-
-        console.log('☁️ Cloud data after sync:', { users: cloudUsers.length, progress: cloudProgress.length });
-      }
+      console.log('🔄 Initializing tracker with local data only...');
 
       // Check for daily reset
       checkAndPerformDailyReset(userId);
 
-      // Get user info (after cloud sync)
+      // Get user info from local storage
       const users = JSON.parse(localStorage.getItem('routine_tracker_users') || '[]');
       const currentUser = users.find((u: { id: string; name: string }) => u.id === userId);
       setUser(currentUser);
 
-      console.log('👤 Current user after sync:', currentUser);
+      console.log('👤 Current user:', currentUser);
 
-      // Get today's progress (after cloud sync)
+      // Get today's progress from local storage
       const todayProgress = getTodayProgress(userId);
 
-      console.log('📊 Today\'s progress for user:', todayProgress);
+      console.log('📊 Today\'s local progress for user:', todayProgress);
 
       if (todayProgress) {
         setProgress(todayProgress);
@@ -118,10 +101,9 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
         };
         setProgress(newProgress);
         saveDailyProgress(newProgress);
-
-        // Sync new progress to cloud
-        await syncToCloud();
       }
+
+      console.log('✅ Tracker initialized with local data. Use Download/Upload buttons to sync with cloud.');
     } catch (error) {
       console.error('Error initializing tracker:', error);
     } finally {
@@ -148,9 +130,7 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
       setProgress(updatedProgress);
       saveDailyProgress(updatedProgress);
 
-      // Immediately sync to cloud after task completion
-      console.log('🔄 Syncing task completion to cloud...');
-      await syncToCloud();
+      console.log('✅ Task progress saved locally. Use "Upload to Cloud" to sync with other devices.');
     } catch (error) {
       console.error('Error updating progress:', error);
     } finally {
@@ -176,55 +156,87 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
     setShowWeeklyReport(false);
   };
 
-  const handleManualSync = async () => {
-    setIsManualSyncing(true);
+  const handleDownloadFromCloud = async () => {
+    setIsDownloading(true);
     try {
-      console.log('🔄 Manual sync started...');
+      console.log('� Download from cloud started...');
 
       // Get current local data
       const localUsers = JSON.parse(localStorage.getItem('routine_tracker_users') || '[]');
       const localProgress = JSON.parse(localStorage.getItem('routine_tracker_progress') || '[]');
       const userProgress = localProgress.filter((p: DailyProgress) => p.userId === userId);
 
-      console.log('📱 Local data before manual sync:', {
+      console.log('📱 Local data before download:', {
         users: localUsers.length,
         totalProgress: localProgress.length,
         userProgress: userProgress.length,
         currentUser: userId
       });
 
-      // First sync from cloud
-      console.log('📥 Downloading latest from cloud...');
-      await syncFromCloud();
+      // Download from cloud
+      const success = await syncFromCloud();
 
-      // Then sync to cloud
-      console.log('📤 Uploading current data to cloud...');
-      const result = await manualSync();
+      if (success) {
+        // Get data after download
+        const downloadedUsers = JSON.parse(localStorage.getItem('routine_tracker_users') || '[]');
+        const downloadedProgress = JSON.parse(localStorage.getItem('routine_tracker_progress') || '[]');
+        const downloadedUserProgress = downloadedProgress.filter((p: DailyProgress) => p.userId === userId);
 
-      // Get data after sync
-      const syncedUsers = JSON.parse(localStorage.getItem('routine_tracker_users') || '[]');
-      const syncedProgress = JSON.parse(localStorage.getItem('routine_tracker_progress') || '[]');
-      const syncedUserProgress = syncedProgress.filter((p: DailyProgress) => p.userId === userId);
+        console.log('☁️ Data after download:', {
+          users: downloadedUsers.length,
+          totalProgress: downloadedProgress.length,
+          userProgress: downloadedUserProgress.length
+        });
 
-      console.log('☁️ Data after manual sync:', {
-        users: syncedUsers.length,
-        totalProgress: syncedProgress.length,
-        userProgress: syncedUserProgress.length
+        // Refresh current progress
+        const refreshedProgress = getTodayProgress(userId);
+        if (refreshedProgress) {
+          setProgress(refreshedProgress);
+          console.log('🔄 Refreshed current progress after download:', refreshedProgress);
+        }
+
+        setSyncStatus(getSyncStatus());
+        console.log('✅ Download completed successfully!');
+      } else {
+        console.log('❌ Download failed');
+      }
+    } catch (error) {
+      console.error('❌ Download failed:', error);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const handleUploadToCloud = async () => {
+    setIsUploading(true);
+    try {
+      console.log('📤 Upload to cloud started...');
+
+      // Get current local data
+      const localUsers = JSON.parse(localStorage.getItem('routine_tracker_users') || '[]');
+      const localProgress = JSON.parse(localStorage.getItem('routine_tracker_progress') || '[]');
+      const userProgress = localProgress.filter((p: DailyProgress) => p.userId === userId);
+
+      console.log('📱 Local data being uploaded:', {
+        users: localUsers.length,
+        totalProgress: localProgress.length,
+        userProgress: userProgress.length,
+        currentUser: userId
       });
 
-      // Refresh current progress
-      const refreshedProgress = getTodayProgress(userId);
-      if (refreshedProgress) {
-        setProgress(refreshedProgress);
-        console.log('🔄 Refreshed current progress:', refreshedProgress);
-      }
+      // Upload to cloud
+      const success = await syncToCloud();
 
-      setSyncStatus(getSyncStatus());
-      console.log('✅ Manual sync completed:', result.message);
+      if (success) {
+        setSyncStatus(getSyncStatus());
+        console.log('✅ Upload completed successfully!');
+      } else {
+        console.log('❌ Upload failed');
+      }
     } catch (error) {
-      console.error('❌ Manual sync failed:', error);
+      console.error('❌ Upload failed:', error);
     } finally {
-      setIsManualSyncing(false);
+      setIsUploading(false);
     }
   };
 
@@ -334,12 +346,20 @@ export function RoutineTracker({ userId, onLogout }: RoutineTrackerProps) {
                       <span>Weekly Report</span>
                     </button>
                     <button
-                      onClick={handleManualSync}
-                      disabled={isManualSyncing}
+                      onClick={handleDownloadFromCloud}
+                      disabled={isDownloading}
                       className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center space-x-2 disabled:opacity-50"
                     >
-                      <span>{isManualSyncing ? '🔄' : '☁️'}</span>
-                      <span>{isManualSyncing ? 'Syncing...' : 'Sync Data'}</span>
+                      <span>{isDownloading ? '🔄' : '📥'}</span>
+                      <span>{isDownloading ? 'Downloading...' : 'Download from Cloud'}</span>
+                    </button>
+                    <button
+                      onClick={handleUploadToCloud}
+                      disabled={isUploading}
+                      className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center space-x-2 disabled:opacity-50"
+                    >
+                      <span>{isUploading ? '🔄' : '📤'}</span>
+                      <span>{isUploading ? 'Uploading...' : 'Upload to Cloud'}</span>
                       {syncStatus.lastSync && (
                         <span className="text-xs text-gray-500 ml-auto">
                           {new Date(syncStatus.lastSync).toLocaleTimeString()}
